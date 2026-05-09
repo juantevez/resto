@@ -1,0 +1,104 @@
+services:
+  # Base de Datos Única (Esquemas separados por microservicio)
+  postgres:
+    image: postgres:15-alpine
+    container_name: restaurant-db
+    environment:
+      POSTGRES_DB: restaurant_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafdrop
+    depends_on:
+      - kafka
+    ports:
+      - "9000:9000"
+    environment:
+      - KAFKA_BROKERCONNECT=kafka:9092
+      - JVM_OPTS=-Xms32M -Xmx64M
+      - SERVER_SERVLET_CONTEXTPATH=/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d restaurant_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Mensajería: Zookeeper
+  zookeeper:
+    image: bitnami/zookeeper:3.9.1
+    container_name: zookeeper
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+
+  # Mensajería: Kafka (Tu configuración probada)
+  kafka:
+    image: bitnami/kafka:3.7.0
+    container_name: kafka-broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_ANONYMOUS_LOGIN=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+    healthcheck:
+      test: ["CMD", "/opt/bitnami/kafka/bin/kafka-topics.sh", "--list", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # Microservicio Table Management
+  table-management:
+    build:
+      context: ./table-management
+    container_name: table-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/restaurant_db
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Microservicio Ordering
+  ordering-service:
+    build:
+      context: ./ordering
+    container_name: ordering-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/restaurant_db
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  # Microservicio Kitchen
+  kitchen-service:
+    build:
+      context: ./kitchen
+    container_name: kitchen-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_THREADS_VIRTUAL_ENABLED=true
+    depends_on:
+      kafka:
+        condition: service_healthy
+
