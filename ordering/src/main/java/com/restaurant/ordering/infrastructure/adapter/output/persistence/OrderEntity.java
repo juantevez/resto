@@ -36,11 +36,12 @@ public class OrderEntity {
 
     private String status;
 
-    // Relación con los ítems.
-    // Usamos orphanRemoval para que al actualizar la lista en el dominio se refleje en la DB.
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<OrderItemEntity> items = new ArrayList<>();
+    @OneToMany(
+            mappedBy = "order", // Este nombre debe coincidir con el campo en OrderItemEntity
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<OrderItemEntity> items;
 
     /**
      * Helper para mantener la consistencia bidireccional.
@@ -57,18 +58,26 @@ public class OrderEntity {
                 this.items.stream()
                         .map(OrderItemEntity::toDomain)
                         .collect(Collectors.toList()),
-                OrderStatus.fromString(this.status) // <--- Usamos el nuevo método
+                OrderStatus.fromString(this.statusType)
         );
     }
 
     public static OrderEntity fromDomain(Order order) {
-        return OrderEntity.builder()
+        OrderEntity entity = OrderEntity.builder()
                 .id(order.id().value())
                 .tableId(order.tableId().value())
-                .status(order.status().name()) // <--- Usamos el default name()
-                .items(order.items().stream()
-                        .map(item -> OrderItemEntity.fromDomain(item, null)) // Ajustar según tu lógica de persistencia
-                        .collect(Collectors.toList()))
+                .statusType(order.status().getClass().getSimpleName().toUpperCase())
+                .statusTimestamp(LocalDateTime.now())
                 .build();
+
+        // Mapeamos los items y les asignamos la entidad padre manualmente
+        List<OrderItemEntity> itemEntities = order.items().stream()
+                .map(item -> {
+                    OrderItemEntity itemEntity = OrderItemEntity.fromDomain(item, entity); // <--- Ahora sí tenés 'entity'
+                    return itemEntity;
+                }).toList();
+
+        entity.setItems(itemEntities);
+        return entity;
     }
 }

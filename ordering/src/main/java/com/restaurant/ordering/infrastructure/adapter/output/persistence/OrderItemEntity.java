@@ -46,7 +46,7 @@ public class OrderItemEntity {
     private BigDecimal unitPrice;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id")
+    @JoinColumn(name = "order_id", nullable = false) // Aquí se define la columna física
     private OrderEntity order;
 
     // --- Mapeadores ---

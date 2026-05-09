@@ -89,6 +89,8 @@ services:
       - SPRING_DATASOURCE_PASSWORD=password
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SPRING_THREADS_VIRTUAL_ENABLED=true
+      - SPRING_FLYWAY_ENABLED=false
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
     depends_on:
       restaurant-db:
         condition: service_healthy
