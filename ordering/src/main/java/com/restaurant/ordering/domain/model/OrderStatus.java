@@ -38,4 +38,20 @@ public sealed interface OrderStatus
     record Cancelled(LocalDateTime cancelledAt, String reason) implements OrderStatus {
         public Cancelled(String reason) { this(LocalDateTime.now(), reason); }
     }
+    // Método estático para convertir String -> Objeto de estado
+    static OrderStatus fromString(String status) {
+        return switch (status.toUpperCase()) {
+            case "PENDING" -> new Pending();
+            case "CONFIRMED" -> new Confirmed();
+            case "READY" -> new Ready();
+            case "DELIVERED" -> new Delivered();
+            case "CANCELLED" -> new Cancelled("Restored from database");
+            default -> throw new IllegalArgumentException("Estado desconocido: " + status);
+        };
+    }
+
+    // Método para obtener el nombre (útil para guardar en DB)
+    default String name() {
+        return this.getClass().getSimpleName().toUpperCase();
+    }
 }

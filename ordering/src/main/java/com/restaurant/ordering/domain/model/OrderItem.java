@@ -1,5 +1,7 @@
 package com.restaurant.ordering.domain.model;
 
+import com.restaurant.shared.domain.valueobjects.ProductId;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -8,7 +10,7 @@ import java.util.UUID;
  * Es un Value Object: su identidad se define por sus atributos.
  */
 public record OrderItem(
-        UUID productId,      // Referencia al catálogo de productos
+        ProductId productId,      // Referencia al catálogo de productos
         String productName,  // Denormalizamos el nombre para auditoría
         int quantity,
         BigDecimal unitPrice

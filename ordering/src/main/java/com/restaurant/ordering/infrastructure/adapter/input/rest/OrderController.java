@@ -3,6 +3,7 @@ package com.restaurant.ordering.infrastructure.adapter.input.rest;
 import com.restaurant.ordering.application.usecase.PlaceOrderUseCase;
 import com.restaurant.ordering.domain.model.Order;
 import com.restaurant.ordering.domain.model.OrderItem;
+import com.restaurant.shared.domain.valueobjects.ProductId;
 import com.restaurant.shared.domain.valueobjects.TableId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,8 @@ public class OrderController {
         // Convertimos los DTOs de entrada a objetos de dominio
         List<OrderItem> domainItems = request.items().stream()
                 .map(item -> new OrderItem(
-                        item.productId(),
+                        //item.productId(),
+                        new ProductId(item.productId()),
                         item.productName(),
                         item.quantity(),
                         item.unitPrice()

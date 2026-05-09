@@ -1,5 +1,7 @@
 package com.restaurant.ordering.infrastructure.adapter.output.persistence;
 
+import com.restaurant.ordering.domain.model.OrderItem;
+import com.restaurant.shared.domain.valueobjects.ProductId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -46,4 +48,25 @@ public class OrderItemEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
     private OrderEntity order;
+
+    // --- Mapeadores ---
+
+    public OrderItem toDomain() {
+        return new OrderItem(
+                new ProductId(this.productId),
+                this.productName,
+                this.quantity,
+                this.unitPrice
+        );
+    }
+
+    public static OrderItemEntity fromDomain(OrderItem item, OrderEntity orderEntity) {
+        return OrderItemEntity.builder()
+                .productId(item.productId().getValue()) // Extraer UUID
+                .productName(item.productName())
+                .quantity(item.quantity())
+                .unitPrice(item.unitPrice())
+                .order(orderEntity) // Mantenemos la relación bidireccional si es necesario
+                .build();
+    }
 }

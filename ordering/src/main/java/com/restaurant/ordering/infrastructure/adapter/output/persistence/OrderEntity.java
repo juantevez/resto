@@ -2,12 +2,15 @@ package com.restaurant.ordering.infrastructure.adapter.output.persistence;
 
 import com.restaurant.ordering.domain.model.Order;
 import com.restaurant.ordering.domain.model.OrderStatus;
+import com.restaurant.shared.domain.valueobjects.OrderId;
+import com.restaurant.shared.domain.valueobjects.TableId;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "orders")
@@ -31,6 +34,8 @@ public class OrderEntity {
 
     private String cancellationReason;
 
+    private String status;
+
     // Relación con los ítems.
     // Usamos orphanRemoval para que al actualizar la lista en el dominio se refleje en la DB.
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -45,41 +50,25 @@ public class OrderEntity {
         item.setOrder(this);
     }
 
+    public Order toDomain() {
+        return new Order(
+                new OrderId(this.id),
+                new TableId(this.tableId),
+                this.items.stream()
+                        .map(OrderItemEntity::toDomain)
+                        .collect(Collectors.toList()),
+                OrderStatus.fromString(this.status) // <--- Usamos el nuevo método
+        );
+    }
+
     public static OrderEntity fromDomain(Order order) {
-        OrderEntity entity = new OrderEntity();
-        entity.setId(order.id().value());
-        entity.setTableId(order.tableId().value());
-
-        // Mapeo del OrderStatus (Sealed Interface)
-        String type = switch (order.status()) {
-            case OrderStatus.Pending(var time) -> {
-                entity.setStatusTimestamp(time);
-                yield "PENDING";
-            }
-            case OrderStatus.Confirmed(var time) -> {
-                entity.setStatusTimestamp(time);
-                yield "CONFIRMED";
-            }
-            case OrderStatus.Cancelled(var time, var reason) -> {
-                entity.setStatusTimestamp(time);
-                entity.setCancellationReason(reason);
-                yield "CANCELLED";
-            }
-            // ... los demás estados
-            default -> "UNKNOWN";
-        };
-        entity.setStatusType(type);
-
-        // Mapeo de la lista de ítems
-        order.items().forEach(item -> {
-            OrderItemEntity itemEntity = OrderItemEntity.builder()
-                    .productId(item.productId())
-                    .productName(item.productName())
-                    .quantity(item.quantity())
-                    .unitPrice(item.unitPrice())
-                    .build();
-            entity.addItem(itemEntity);
-        });
-
-        return entity;
-    }}
+        return OrderEntity.builder()
+                .id(order.id().value())
+                .tableId(order.tableId().value())
+                .status(order.status().name()) // <--- Usamos el default name()
+                .items(order.items().stream()
+                        .map(item -> OrderItemEntity.fromDomain(item, null)) // Ajustar según tu lógica de persistencia
+                        .collect(Collectors.toList()))
+                .build();
+    }
+}
